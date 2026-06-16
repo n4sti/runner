@@ -1,10 +1,5 @@
 name: Build Multica iOS IPA
 
-# Builds the Multica mobile app from n4s5ti/multica into an unsigned IPA
-# using xcodebuild on a macOS runner. No EAS, no Expo credentials, no Apple
-# Developer enrollment needed — download the artifact and sign with your own
-# identity.
-
 on:
   workflow_dispatch:
     inputs:
@@ -52,21 +47,10 @@ jobs:
           APP_ENV: ${{ inputs.profile == 'staging' && 'staging' || 'production' }}
         run: npx expo prebuild --platform ios --clean
 
-      - name: Install CocoaPods dependencies
-        working-directory: apps/mobile/ios
-        run: pod install
-
       - name: Configure Xcode version
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: 'latest'
-
-      - name: Detect Xcode scheme
-        working-directory: apps/mobile
-        run: |
-          SCHEME=$(xcodebuild -list -workspace ios/*.xcworkspace \
-            2>/dev/null | awk '/Schemes:/{f=1; next} f && NF{gsub(/^[ \t]+|[ \t]+$/,""); print; exit}')
-          echo "SCHEME=${SCHEME}" >> "$GITHUB_ENV"
 
       - name: Compile app archive (unsigned)
         working-directory: apps/mobile
@@ -74,8 +58,8 @@ jobs:
           APP_ENV: ${{ inputs.profile == 'staging' && 'staging' || 'production' }}
         run: |
           xcodebuild clean archive \
-            -workspace "ios/${SCHEME}.xcworkspace" \
-            -scheme "${SCHEME}" \
+            -workspace ios/Multica.xcworkspace \
+            -scheme Multica \
             -configuration Release \
             -archivePath build/Multica.xcarchive \
             -sdk iphoneos \
@@ -87,10 +71,9 @@ jobs:
 
       - name: Package IPA
         run: |
-          SCHEME="${SCHEME:-Multica}"
           mkdir -p Payload
-          cp -R "apps/mobile/build/Multica.xcarchive/Products/Applications/${SCHEME}.app" \
-            "Payload/${SCHEME}.app"
+          cp -R "apps/mobile/build/Multica.xcarchive/Products/Applications/Multica.app" \
+            "Payload/Multica.app"
           cd Payload && zip -r ../multica.ipa . && cd ..
           rm -rf Payload
 
